@@ -17,4 +17,5 @@ tokio = "1.35.0"
 infer = "0.15.0"
 
 [dev-dependencies]
+google-auth-helper = { git = "https://github.com/xAmbit-ai/google-auth-helper" , branch = "main" }
 

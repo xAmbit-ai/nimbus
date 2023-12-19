@@ -16,7 +16,7 @@ pub trait CloudTaskHelper<S> {
     fn new_http_task(
         service: &str,
         method: &str,
-        task: Vec<u8>,
+        body: Option<Vec<u8>>,
         headers: Option<HashMap<String, String>>,
         name: Option<String>,
         schedule_time: Option<DateTime<Utc>>,
@@ -51,7 +51,7 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
     fn new_http_task(
         service: &str,
         method: &str,
-        task: Vec<u8>,
+        body: Option<Vec<u8>>,
         headers: Option<HashMap<String, String>>,
         name: Option<String>,
         schedule_time: Option<DateTime<Utc>>,
@@ -59,7 +59,7 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
     ) -> Task {
         let http_request = HttpRequest {
             url: Some(service.to_owned()),
-            body: Some(task),
+            body,
             http_method: Some(method.to_owned()),
             oidc_token,
             headers,
@@ -92,5 +92,66 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
             .await?;
 
         Ok(a)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use google_auth_helper::helper::AuthHelper;
+    #[tokio::test]
+    async fn test_new_http_task() {
+        let date = Utc::now();
+        let task = CloudTasks::new_http_task(
+            "https://example.com",
+            "POST",
+            None,
+            Some(HashMap::new()),
+            Some("test".to_owned()),
+            Some(date),
+            None,
+        );
+
+        assert_eq!(task.clone().http_request.unwrap().url.unwrap(), "https://example.com");
+        assert_eq!(task.clone().http_request.unwrap().http_method.unwrap(), "POST");
+        assert_eq!(task.clone().name.unwrap(), "test");
+        assert_eq!(task.clone().schedule_time.unwrap(), date);
+    }
+
+    #[tokio::test]
+    async fn cloud_task_helper() {
+        let auth = Authenticator::auth().await.unwrap();
+        let client = CloudTasks::new_with_authenticator(auth).await;
+
+        let body = "\
+        {
+            \"title\": \"foo task\",
+            \"body\": \"bar task\",
+            \"userId\": 1
+        }";
+
+        let body = body.as_bytes().to_vec();
+
+        let headers = {
+            let mut h = HashMap::new();
+            h.insert("Content-Type".to_owned(), "application/json; charset=UTF-8".to_owned());
+            h
+        };
+
+        let task = CloudTasks::new_http_task(
+            "https://jsonplaceholder.typicode.com/posts",
+            "POST",
+            Some(body.clone()),
+            Some(headers.clone()),
+            None,
+            None,
+            None,
+        );
+
+        let queue = std::env::var("QUEUE").unwrap();
+
+        let (res, _task) = client.push_http_task(&queue, task, None).await.unwrap();
+
+        assert_eq!(res.status(), 200);
     }
 }
