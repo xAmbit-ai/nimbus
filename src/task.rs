@@ -7,48 +7,10 @@ use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use std::collections::HashMap;
 use std::error::Error;
 
-#[async_trait::async_trait]
-pub trait CloudTaskHelper<S> {
-    async fn new_with_authenticator(
-        authenticator: Authenticator<S>,
-    ) -> Self;
-
-    fn new_http_task(
-        service: &str,
-        method: &str,
-        body: Option<Vec<u8>>,
-        headers: Option<HashMap<String, String>>,
-        name: Option<String>,
-        schedule_time: Option<DateTime<Utc>>,
-        oidc_token: Option<OidcToken>,
-    ) -> Task;
-    async fn push_http_task(
-        &self,
-        queue: &str,
-        task: Task,
-        res_view: Option<String>,
-    ) -> Result<(Response<Body>, Task), Box<dyn std::error::Error>>;
-}
 
 #[async_trait::async_trait]
-impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnector<HttpConnector>> {
-    async fn new_with_authenticator(
-        authenticator: Authenticator<HttpsConnector<HttpConnector>>,
-    ) -> Self {
-        CloudTasks::new(
-            hyper::Client::builder().build(
-                HttpsConnectorBuilder::new()
-                    .with_native_roots()
-                    .https_only()
-                    .enable_http1()
-                    .enable_http2()
-                    .build(),
-            ),
-            authenticator,
-        )
-    }
-
-    fn new_http_task(
+pub trait TaskHelper {
+    fn new_task(
         service: &str,
         method: &str,
         body: Option<Vec<u8>>,
@@ -73,8 +35,43 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
             ..Default::default()
         }
     }
+}
 
-    async fn push_http_task(
+#[async_trait::async_trait]
+pub trait CloudTaskHelper<S> {
+    async fn new_with_authenticator(
+        authenticator: Authenticator<S>,
+    ) -> Self;
+
+    async fn push_task(
+        &self,
+        queue: &str,
+        task: Task,
+        res_view: Option<String>,
+    ) -> Result<(Response<Body>, Task), Box<dyn std::error::Error>>;
+}
+
+impl TaskHelper for Task {}
+
+#[async_trait::async_trait]
+impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnector<HttpConnector>> {
+    async fn new_with_authenticator(
+        authenticator: Authenticator<HttpsConnector<HttpConnector>>,
+    ) -> Self {
+        CloudTasks::new(
+            hyper::Client::builder().build(
+                HttpsConnectorBuilder::new()
+                    .with_native_roots()
+                    .https_only()
+                    .enable_http1()
+                    .enable_http2()
+                    .build(),
+            ),
+            authenticator,
+        )
+    }
+
+    async fn push_task(
         &self,
         queue: &str,
         task: Task,
@@ -102,7 +99,7 @@ mod tests {
     #[tokio::test]
     async fn test_new_http_task() {
         let date = Utc::now();
-        let task = CloudTasks::new_http_task(
+        let task = Task::new_task(
             "https://example.com",
             "POST",
             None,
@@ -138,7 +135,7 @@ mod tests {
             h
         };
 
-        let task = CloudTasks::new_http_task(
+        let task = Task::new_task(
             "https://jsonplaceholder.typicode.com/posts",
             "POST",
             Some(body.clone()),
@@ -150,7 +147,7 @@ mod tests {
 
         let queue = std::env::var("QUEUE").unwrap();
 
-        let (res, _task) = client.push_http_task(&queue, task, None).await.unwrap();
+        let (res, _task) = client.push_task(&queue, task, None).await.unwrap();
 
         assert_eq!(res.status(), 200);
     }
