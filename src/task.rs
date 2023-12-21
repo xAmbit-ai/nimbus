@@ -5,7 +5,16 @@ use hyper::client::HttpConnector;
 use hyper::{Body, Response};
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use std::collections::HashMap;
-use std::error::Error;
+use thiserror::Error;
+use crate::NimbusError;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Error: {0}")]
+    Other(String),
+    #[error("CloudTasks error: {0}")]
+    CloudTasks(#[from] google_cloudtasks2::Error),
+}
 
 #[async_trait::async_trait]
 pub trait TaskHelper {
@@ -52,7 +61,7 @@ pub trait CloudTaskHelper<S> {
         schedule_time: Option<DateTime<Utc>>,
         oidc_token: Option<OidcToken>,
         res_view: Option<String>,
-    ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>> {
+    ) -> Result<(Response<Body>, Task), NimbusError> {
         let task = Task::new_task(
             service,
             method,
@@ -70,7 +79,7 @@ pub trait CloudTaskHelper<S> {
         queue: &str,
         task: Task,
         res_view: Option<String>,
-    ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>>;
+    ) -> Result<(Response<Body>, Task), NimbusError>;
 }
 
 impl TaskHelper for Task {}
@@ -98,7 +107,7 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
         queue: &str,
         task: Task,
         res_view: Option<String>,
-    ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>> {
+    ) -> Result<(Response<Body>, Task), NimbusError> {
         let rq = CreateTaskRequest {
             task: Some(task),
             response_view: res_view,
@@ -108,7 +117,9 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
             .projects()
             .locations_queues_tasks_create(rq, queue)
             .doit()
-            .await?;
+            .await.map_err(|e| {
+                Error::CloudTasks(e)
+            })?;
 
         Ok(a)
     }

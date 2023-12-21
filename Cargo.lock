@@ -1015,6 +1015,7 @@ dependencies = [
  "hyper",
  "hyper-rustls",
  "infer",
+ "thiserror",
  "tokio",
 ]
 

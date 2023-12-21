@@ -15,6 +15,7 @@ async-trait = "0.1.74"
 chrono = "0.4.31"
 tokio = "1.35.0"
 infer = "0.15.0"
+thiserror = "1.0.51"
 
 [dev-dependencies]
 google-auth-helper = { git = "https://github.com/xAmbit-ai/google-auth-helper" , branch = "main" }

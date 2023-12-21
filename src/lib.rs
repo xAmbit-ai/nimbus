@@ -6,23 +6,16 @@ pub use secret::SecretManagerHelper;
 pub use storage::StorageHelper;
 pub use task::{CloudTaskHelper, TaskHelper};
 
-#[derive(Debug)]
-struct Error {
-    message: String,
-}
+use thiserror::Error;
 
-impl Error {
-    fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
+#[derive(Error, Debug)]
+pub enum NimbusError {
+    #[error("SecretManager error: {0}")]
+    SecretManager(#[from] secret::Error),
+    #[error("Storage error: {0}")]
+    Storage(#[from] storage::Error),
+    #[error("CloudTasks error: {0}")]
+    CloudTasks(#[from] task::Error),
+    #[error("Error: {0}")]
+    Other(String),
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for Error {}

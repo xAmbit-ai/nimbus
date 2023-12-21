@@ -6,6 +6,20 @@ use google_cloud_storage::http::objects::upload::{UploadObjectRequest, UploadTyp
 use google_cloud_storage::http::objects::Object;
 use std::path::PathBuf;
 use tokio;
+use thiserror::Error;
+use crate::NimbusError;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Storage auth error: {0}")]
+    StorageAuth(#[from] google_cloud_storage::client::google_cloud_auth::error::Error),
+    #[error("Storage error: {0}")]
+    Storage(#[from] google_cloud_storage::http::Error),
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("Error: {0}")]
+    Other(String),
+}
 
 #[async_trait::async_trait]
 pub trait StorageHelper {
@@ -17,23 +31,25 @@ pub trait StorageHelper {
         key: &str,
         mime: Option<String>,
         data: Vec<u8>,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+    ) -> Result<(), NimbusError>;
 
     async fn download_to_bytes(
         &self,
         bucket: &str,
         key: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>>;
+    ) -> Result<Vec<u8>, NimbusError>;
 
-    async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), Box<dyn std::error::Error>>;
+    async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), NimbusError>;
 
     async fn upload_file(
         &self,
         bucket: &str,
         key: &str,
         path: PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let data = tokio::fs::read(path).await?;
+    ) -> Result<(), NimbusError> {
+        let data = tokio::fs::read(path).await.map_err(|e| {
+            Error::IO(e)
+        })?;
         self.upload_from_bytes(bucket, key, None, data).await?;
         Ok(())
     }
@@ -43,15 +59,19 @@ pub trait StorageHelper {
         bucket: &str,
         key: &str,
         path_dir: PathBuf,
-    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    ) -> Result<PathBuf, NimbusError> {
         if !path_dir.exists() {
             tokio::fs::create_dir_all(path_dir.clone())
-                .await
-                .expect("Failed to create directory");
+                .await.map_err(|e| {
+                    Error::IO(e)
+                })?;
         }
 
         if !path_dir.is_dir() {
-            return Err("Path is not a directory".into());
+            return Err(Error::Other(format!(
+                "Path {} is not a directory",
+                path_dir.display()
+            )).into());
         }
 
         let data = self.download_to_bytes(bucket, key).await?;
@@ -59,13 +79,15 @@ pub trait StorageHelper {
 
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent)
-                .await
-                .expect("Failed to create directory");
+                .await.map_err(|e| {
+                    Error::IO(e)
+                })?;
         }
 
         tokio::fs::write(path.clone(), data)
-            .await
-            .expect("Failed to write file");
+            .await.map_err(|e| {
+                Error::IO(e)
+            })?;
 
         Ok(path)
     }
@@ -74,16 +96,17 @@ pub trait StorageHelper {
         &self,
         file: &[u8],
         expected: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let file_type = infer::get(file).expect("File type is unknown");
+    ) -> Result<(), NimbusError> {
+        let file_type = infer::get(file).ok_or_else(|| {
+            Error::Other("Failed to get file type".to_owned())
+        })?;
 
         if file_type.extension() != expected {
-            return Err(format!(
-                "File extension is not {} but {}",
+            return Err(Error::Other(format!(
+                "File type is not valid. Expected: {}, got: {}",
                 expected,
                 file_type.extension()
-            )
-            .into());
+            )).into());
         }
 
         Ok(())
@@ -102,7 +125,7 @@ impl StorageHelper for Client {
         key: &str,
         mime: Option<String>,
         data: Vec<u8>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), NimbusError> {
         let up_type = UploadType::Multipart(Box::new(Object {
             name: key.to_string(),
             content_type: mime,
@@ -118,7 +141,9 @@ impl StorageHelper for Client {
                 data,
                 &up_type,
             )
-            .await?;
+            .await.map_err(|e| {
+                Error::Storage(e)
+            })?;
 
         Ok(())
     }
@@ -127,7 +152,7 @@ impl StorageHelper for Client {
         &self,
         bucket: &str,
         key: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<u8>, NimbusError> {
         let a = self
             .download_object(
                 &GetObjectRequest {
@@ -137,19 +162,23 @@ impl StorageHelper for Client {
                 },
                 &Range::default(),
             )
-            .await?;
+            .await.map_err(|e| {
+                Error::Storage(e)
+            })?;
 
         Ok(a)
     }
 
-    async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
+    async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), NimbusError> {
         let _ = self
             .delete_object(&DeleteObjectRequest {
                 bucket: bucket.to_owned(),
                 object: key.to_owned(),
                 ..Default::default()
             })
-            .await?;
+            .await.map_err(|e| {
+                Error::Storage(e)
+            })?;
 
         Ok(())
     }

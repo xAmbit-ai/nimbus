@@ -1,8 +1,21 @@
-use super::Error;
 use google_secretmanager1::{oauth2::authenticator::Authenticator, SecretManager};
 use hyper::client::HttpConnector;
 use hyper::Client;
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
+use thiserror::Error;
+use crate::NimbusError;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("No data in payload from AccessSecretVersionResponse")]
+    NoData,
+    #[error("No payload in AccessSecretVersionResponse")]
+    NoPayload,
+    #[error("Error: {0}")]
+    Other(String),
+    #[error("SecretManager error: {0}")]
+    SecretManager(#[from] google_secretmanager1::Error),
+}
 
 #[async_trait::async_trait]
 pub trait SecretManagerHelper<S> {
@@ -12,14 +25,14 @@ pub trait SecretManagerHelper<S> {
         &self,
         project: &str,
         secret: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>>;
+    ) -> Result<Vec<u8>, NimbusError>;
 
     async fn get_secret_version(
         &self,
         project: &str,
         secret: &str,
         version: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>>;
+    ) -> Result<Vec<u8>, NimbusError>;
 }
 
 #[async_trait::async_trait]
@@ -46,22 +59,24 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
         &self,
         project: &str,
         secret: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<u8>, NimbusError> {
         let secret_name = format!("projects/{}/secrets/{}/versions/latest", project, secret);
         let (_r, s) = self
             .projects()
             .secrets_versions_access(&secret_name)
             .doit()
-            .await?;
+            .await.map_err(|e| {
+                Error::SecretManager(e)
+            })?;
 
         let secret = if let Some(pl) = s.payload {
             if let Some(data) = pl.data {
                 data
             } else {
-                return Err(Error::new("No data in payload").into());
+                return Err(Error::NoData.into());
             }
         } else {
-            return Err(Error::new("No payload").into());
+            return Err(Error::NoPayload.into());
         };
 
         Ok(secret)
@@ -72,7 +87,7 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
         project: &str,
         secret: &str,
         version: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<u8>, NimbusError> {
         let secret_name = format!(
             "projects/{}/secrets/{}/versions/{}",
             project, secret, version
@@ -81,16 +96,18 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
             .projects()
             .secrets_versions_access(&secret_name)
             .doit()
-            .await?;
+            .await.map_err(|e| {
+                Error::SecretManager(e)
+            })?;
 
         let secret = if let Some(pl) = s.payload {
             if let Some(data) = pl.data {
                 data
             } else {
-                return Err(Error::new("No data in payload: {}").into());
+                return Err(Error::NoData.into());
             }
         } else {
-            return Err(Error::new("No payload").into());
+            return Err(Error::NoPayload.into());
         };
 
         Ok(secret)
