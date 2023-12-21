@@ -43,12 +43,38 @@ pub trait CloudTaskHelper<S> {
         authenticator: Authenticator<S>,
     ) -> Self;
 
+    #[allow(clippy::too_many_arguments)]
+    async fn push(
+        &self,
+        queue: &str,
+        service: &str,
+        method: &str,
+        body: Option<Vec<u8>>,
+        headers: Option<HashMap<String, String>>,
+        name: Option<String>,
+        schedule_time: Option<DateTime<Utc>>,
+        oidc_token: Option<OidcToken>,
+        res_view: Option<String>,
+    ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>> {
+
+        let task = Task::new_task(
+            service,
+            method,
+            body,
+            headers,
+            name,
+            schedule_time,
+            oidc_token,
+        );
+
+        self.push_task(queue, task, res_view).await
+    }
     async fn push_task(
         &self,
         queue: &str,
         task: Task,
         res_view: Option<String>,
-    ) -> Result<(Response<Body>, Task), Box<dyn std::error::Error>>;
+    ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>>;
 }
 
 impl TaskHelper for Task {}
@@ -76,7 +102,7 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
         queue: &str,
         task: Task,
         res_view: Option<String>,
-    ) -> Result<(Response<Body>, Task), Box<dyn Error>> {
+    ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>> {
         let rq = CreateTaskRequest {
             task: Some(task),
             response_view: res_view,
@@ -94,10 +120,11 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{CloudTaskHelper, CloudTasks, Authenticator, Task, Utc, HashMap};
     use google_auth_helper::helper::AuthHelper;
     #[tokio::test]
     async fn test_new_http_task() {
+        use super::TaskHelper;
         let date = Utc::now();
         let task = Task::new_task(
             "https://example.com",
@@ -117,6 +144,7 @@ mod tests {
 
     #[tokio::test]
     async fn cloud_task_helper() {
+        use super::TaskHelper;
         let auth = Authenticator::auth().await.unwrap();
         let client = CloudTasks::new_with_authenticator(auth).await;
 
@@ -148,6 +176,46 @@ mod tests {
         let queue = std::env::var("QUEUE").unwrap();
 
         let (res, _task) = client.push_task(&queue, task, None).await.unwrap();
+
+        assert_eq!(res.status(), 200);
+    }
+
+    #[tokio::test]
+    async fn cloud_task_helper_push() {
+        let auth = Authenticator::auth().await.unwrap();
+        let client = CloudTasks::new_with_authenticator(auth).await;
+
+        let body = "\
+        {
+            \"title\": \"foo task\",
+            \"body\": \"bar task\",
+            \"userId\": 1
+        }";
+
+        let body = body.as_bytes().to_vec();
+
+        let headers = {
+            let mut h = HashMap::new();
+            h.insert("Content-Type".to_owned(), "application/json; charset=UTF-8".to_owned());
+            h
+        };
+
+        let queue = std::env::var("QUEUE").unwrap();
+
+        let (res, _task) = client
+            .push(
+                &queue,
+                "https://jsonplaceholder.typicode.com/posts",
+                "POST",
+                Some(body.clone()),
+                Some(headers.clone()),
+                None,
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
 
         assert_eq!(res.status(), 200);
     }
