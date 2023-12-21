@@ -70,7 +70,7 @@ use google_cloud_storage::client::{Client, ClientConfig};
 #[tokio::main]
 async fn main() {
     let config = ClientConfig::auth().await.unwrap();
-    let storage = Client::new_with_config(config).await;
+    let storage = Client::new(config).await;
 
     let bucket = std::env::var("BUCKET").unwrap();
     let key = std::env::var("KEY").unwrap();

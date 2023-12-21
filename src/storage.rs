@@ -23,8 +23,6 @@ pub enum Error {
 
 #[async_trait::async_trait]
 pub trait StorageHelper {
-    async fn new_with_config(config: ClientConfig) -> Self;
-
     async fn upload_from_bytes(
         &self,
         bucket: &str,
@@ -115,10 +113,6 @@ pub trait StorageHelper {
 
 #[async_trait::async_trait]
 impl StorageHelper for Client {
-    async fn new_with_config(config: ClientConfig) -> Self {
-        Client::new(config)
-    }
-
     async fn upload_from_bytes(
         &self,
         bucket: &str,
