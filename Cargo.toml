@@ -6,16 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-google-cloud-storage = "0.15.0"
-google-secretmanager1 = "5.0.3"
-google-cloudtasks2 = "5.0.3"
+google-cloud-storage = "0.15"
+google-secretmanager1 = "5.0"
+google-cloudtasks2 = "5.0"
 hyper = "0.14"
-hyper-rustls = "0.24"
-async-trait = "0.1.74"
-chrono = "0.4.31"
-tokio = "1.35.0"
-infer = "0.15.0"
-thiserror = "1.0.51"
+hyper-rustls = "0"
+async-trait = "0.1"
+chrono = "0.4"
+tokio = "1"
+infer = "0.15"
+thiserror = "1"
 
 [dev-dependencies]
 google-auth-helper = { git = "https://github.com/xAmbit-ai/google-auth-helper" , branch = "main" }
