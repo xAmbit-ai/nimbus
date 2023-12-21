@@ -17,6 +17,8 @@ pub enum Error {
     Storage(#[from] google_cloud_storage::http::Error),
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
+    #[error("File Type Validation Error: {0}")]
+    InvalidFileType(String),
     #[error("Error: {0}")]
     Other(String),
 }
@@ -96,11 +98,11 @@ pub trait StorageHelper {
         expected: &str,
     ) -> Result<(), NimbusError> {
         let file_type = infer::get(file).ok_or_else(|| {
-            Error::Other("Failed to get file type".to_owned())
+            Error::InvalidFileType("Failed to get file type".to_owned())
         })?;
 
         if file_type.extension() != expected {
-            return Err(Error::Other(format!(
+            return Err(Error::InvalidFileType(format!(
                 "File type is not valid. Expected: {}, got: {}",
                 expected,
                 file_type.extension()

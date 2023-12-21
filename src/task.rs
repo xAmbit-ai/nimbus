@@ -178,18 +178,23 @@ mod tests {
             );
             h
         };
+        let queue = std::env::var("QUEUE").unwrap();
+        let time_now = Utc::now();
+        let time_now_int = time_now.timestamp();
+        // xor shift algo
+        let random_num = time_now_int ^ (time_now_int << 13) ^ (time_now_int >> 17) ^ (time_now_int << 5);
+        let task_name = queue.clone() + "/tasks/test_task_" + &random_num.to_string();
 
         let task = Task::new_task(
             "https://jsonplaceholder.typicode.com/posts",
             "POST",
             Some(body.clone()),
             Some(headers.clone()),
-            None,
+            Some(task_name),
             None,
             None,
         );
 
-        let queue = std::env::var("QUEUE").unwrap();
 
         let (res, _task) = client.push_task(&queue, task, None).await.unwrap();
 
