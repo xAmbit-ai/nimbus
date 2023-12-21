@@ -11,11 +11,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum NimbusError {
     #[error("SecretManager error: {0}")]
-    SecretManager(#[from] secret::Error),
+    Secret(#[from] secret::Error),
     #[error("Storage error: {0}")]
     Storage(#[from] storage::Error),
     #[error("CloudTasks error: {0}")]
-    CloudTasks(#[from] task::Error),
+    Task(#[from] task::Error),
     #[error("Error: {0}")]
     Other(String),
 }
