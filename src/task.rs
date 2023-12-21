@@ -7,7 +7,6 @@ use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use std::collections::HashMap;
 use std::error::Error;
 
-
 #[async_trait::async_trait]
 pub trait TaskHelper {
     fn new_task(
@@ -39,9 +38,7 @@ pub trait TaskHelper {
 
 #[async_trait::async_trait]
 pub trait CloudTaskHelper<S> {
-    async fn new_with_authenticator(
-        authenticator: Authenticator<S>,
-    ) -> Self;
+    async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 
     #[allow(clippy::too_many_arguments)]
     async fn push(
@@ -56,7 +53,6 @@ pub trait CloudTaskHelper<S> {
         oidc_token: Option<OidcToken>,
         res_view: Option<String>,
     ) -> Result<(Response<Body>, Task), Box<dyn Error + Send + Sync>> {
-
         let task = Task::new_task(
             service,
             method,
@@ -120,7 +116,7 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
 
 #[cfg(test)]
 mod tests {
-    use super::{CloudTaskHelper, CloudTasks, Authenticator, Task, Utc, HashMap};
+    use super::{Authenticator, CloudTaskHelper, CloudTasks, HashMap, Task, Utc};
     use google_auth_helper::helper::AuthHelper;
     #[tokio::test]
     async fn test_new_http_task() {
@@ -136,8 +132,14 @@ mod tests {
             None,
         );
 
-        assert_eq!(task.clone().http_request.unwrap().url.unwrap(), "https://example.com");
-        assert_eq!(task.clone().http_request.unwrap().http_method.unwrap(), "POST");
+        assert_eq!(
+            task.clone().http_request.unwrap().url.unwrap(),
+            "https://example.com"
+        );
+        assert_eq!(
+            task.clone().http_request.unwrap().http_method.unwrap(),
+            "POST"
+        );
         assert_eq!(task.clone().name.unwrap(), "test");
         assert_eq!(task.clone().schedule_time.unwrap(), date);
     }
@@ -159,7 +161,10 @@ mod tests {
 
         let headers = {
             let mut h = HashMap::new();
-            h.insert("Content-Type".to_owned(), "application/json; charset=UTF-8".to_owned());
+            h.insert(
+                "Content-Type".to_owned(),
+                "application/json; charset=UTF-8".to_owned(),
+            );
             h
         };
 
@@ -196,7 +201,10 @@ mod tests {
 
         let headers = {
             let mut h = HashMap::new();
-            h.insert("Content-Type".to_owned(), "application/json; charset=UTF-8".to_owned());
+            h.insert(
+                "Content-Type".to_owned(),
+                "application/json; charset=UTF-8".to_owned(),
+            );
             h
         };
 
