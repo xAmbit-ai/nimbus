@@ -1,9 +1,9 @@
+use crate::NimbusError;
 use google_secretmanager1::{oauth2::authenticator::Authenticator, SecretManager};
 use hyper::client::HttpConnector;
 use hyper::Client;
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use thiserror::Error;
-use crate::NimbusError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -16,17 +16,18 @@ pub enum Error {
     #[error("SecretManager error: {0}")]
     SecretManager(#[from] google_secretmanager1::Error),
 }
-
+/// SecretManagerHelper trait
+/// implemented for SecretManager<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
 pub trait SecretManagerHelper<S> {
+    /// Create a new SecretManager with an Authenticator
+    /// Deals with boilerplate of creating a new SecretManager
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 
-    async fn get_secret(
-        &self,
-        project: &str,
-        secret: &str,
-    ) -> Result<Vec<u8>, NimbusError>;
+    /// Get the latest version of a secret
+    async fn get_secret(&self, project: &str, secret: &str) -> Result<Vec<u8>, NimbusError>;
 
+    /// Get a specific version of a secret
     async fn get_secret_version(
         &self,
         project: &str,
@@ -55,19 +56,14 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
         )
     }
 
-    async fn get_secret(
-        &self,
-        project: &str,
-        secret: &str,
-    ) -> Result<Vec<u8>, NimbusError> {
+    async fn get_secret(&self, project: &str, secret: &str) -> Result<Vec<u8>, NimbusError> {
         let secret_name = format!("projects/{}/secrets/{}/versions/latest", project, secret);
         let (_r, s) = self
             .projects()
             .secrets_versions_access(&secret_name)
             .doit()
-            .await.map_err(|e| {
-                Error::SecretManager(e)
-            })?;
+            .await
+            .map_err(|e| Error::SecretManager(e))?;
 
         let secret = if let Some(pl) = s.payload {
             if let Some(data) = pl.data {
@@ -96,9 +92,8 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
             .projects()
             .secrets_versions_access(&secret_name)
             .doit()
-            .await.map_err(|e| {
-                Error::SecretManager(e)
-            })?;
+            .await
+            .map_err(|e| Error::SecretManager(e))?;
 
         let secret = if let Some(pl) = s.payload {
             if let Some(data) = pl.data {

@@ -1,3 +1,4 @@
+use crate::NimbusError;
 use google_cloud_storage::client::{Client, ClientConfig};
 use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
 use google_cloud_storage::http::objects::download::Range;
@@ -5,9 +6,8 @@ use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::{UploadObjectRequest, UploadType};
 use google_cloud_storage::http::objects::Object;
 use std::path::PathBuf;
-use tokio;
 use thiserror::Error;
-use crate::NimbusError;
+use tokio;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -25,6 +25,7 @@ pub enum Error {
 
 #[async_trait::async_trait]
 pub trait StorageHelper {
+    /// upload from bytes to a bucket
     async fn upload_from_bytes(
         &self,
         bucket: &str,
@@ -33,27 +34,22 @@ pub trait StorageHelper {
         data: Vec<u8>,
     ) -> Result<(), NimbusError>;
 
-    async fn download_to_bytes(
-        &self,
-        bucket: &str,
-        key: &str,
-    ) -> Result<Vec<u8>, NimbusError>;
+    /// download to bytes from a bucket
+    async fn download_to_bytes(&self, bucket: &str, key: &str) -> Result<Vec<u8>, NimbusError>;
 
+    /// delete a file from a bucket
     async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), NimbusError>;
 
-    async fn upload_file(
-        &self,
-        bucket: &str,
-        key: &str,
-        path: PathBuf,
-    ) -> Result<(), NimbusError> {
-        let data = tokio::fs::read(path).await.map_err(|e| {
-            Error::IO(e)
-        })?;
+    /// upload a file from a path to a bucket
+    /// takes a PathBuf to file and key
+    /// file name does not matter as key will be used to create the file in the bucket
+    async fn upload_file(&self, bucket: &str, key: &str, path: PathBuf) -> Result<(), NimbusError> {
+        let data = tokio::fs::read(path).await.map_err(|e| Error::IO(e))?;
         self.upload_from_bytes(bucket, key, None, data).await?;
         Ok(())
     }
 
+    /// download a file from a bucket to a path to given destination directory
     async fn download_file(
         &self,
         bucket: &str,
@@ -62,16 +58,14 @@ pub trait StorageHelper {
     ) -> Result<PathBuf, NimbusError> {
         if !path_dir.exists() {
             tokio::fs::create_dir_all(path_dir.clone())
-                .await.map_err(|e| {
-                    Error::IO(e)
-                })?;
+                .await
+                .map_err(|e| Error::IO(e))?;
         }
 
         if !path_dir.is_dir() {
-            return Err(Error::Other(format!(
-                "Path {} is not a directory",
-                path_dir.display()
-            )).into());
+            return Err(
+                Error::Other(format!("Path {} is not a directory", path_dir.display())).into(),
+            );
         }
 
         let data = self.download_to_bytes(bucket, key).await?;
@@ -79,34 +73,29 @@ pub trait StorageHelper {
 
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent)
-                .await.map_err(|e| {
-                    Error::IO(e)
-                })?;
+                .await
+                .map_err(|e| Error::IO(e))?;
         }
 
         tokio::fs::write(path.clone(), data)
-            .await.map_err(|e| {
-                Error::IO(e)
-            })?;
+            .await
+            .map_err(|e| Error::IO(e))?;
 
         Ok(path)
     }
 
-    fn valid_file_type(
-        &self,
-        file: &[u8],
-        expected: &str,
-    ) -> Result<(), NimbusError> {
-        let file_type = infer::get(file).ok_or_else(|| {
-            Error::InvalidFileType("Failed to get file type".to_owned())
-        })?;
+    /// check if file type is valid
+    fn valid_file_type(&self, file: &[u8], expected: &str) -> Result<(), NimbusError> {
+        let file_type = infer::get(file)
+            .ok_or_else(|| Error::InvalidFileType("Failed to get file type".to_owned()))?;
 
         if file_type.extension() != expected {
             return Err(Error::InvalidFileType(format!(
                 "File type is not valid. Expected: {}, got: {}",
                 expected,
                 file_type.extension()
-            )).into());
+            ))
+            .into());
         }
 
         Ok(())
@@ -137,18 +126,13 @@ impl StorageHelper for Client {
                 data,
                 &up_type,
             )
-            .await.map_err(|e| {
-                Error::Storage(e)
-            })?;
+            .await
+            .map_err(|e| Error::Storage(e))?;
 
         Ok(())
     }
 
-    async fn download_to_bytes(
-        &self,
-        bucket: &str,
-        key: &str,
-    ) -> Result<Vec<u8>, NimbusError> {
+    async fn download_to_bytes(&self, bucket: &str, key: &str) -> Result<Vec<u8>, NimbusError> {
         let a = self
             .download_object(
                 &GetObjectRequest {
@@ -158,9 +142,8 @@ impl StorageHelper for Client {
                 },
                 &Range::default(),
             )
-            .await.map_err(|e| {
-                Error::Storage(e)
-            })?;
+            .await
+            .map_err(|e| Error::Storage(e))?;
 
         Ok(a)
     }
@@ -172,9 +155,8 @@ impl StorageHelper for Client {
                 object: key.to_owned(),
                 ..Default::default()
             })
-            .await.map_err(|e| {
-                Error::Storage(e)
-            })?;
+            .await
+            .map_err(|e| Error::Storage(e))?;
 
         Ok(())
     }

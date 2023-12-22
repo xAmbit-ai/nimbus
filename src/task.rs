@@ -1,3 +1,4 @@
+use crate::NimbusError;
 use chrono::{DateTime, Utc};
 use google_cloudtasks2::api::{CreateTaskRequest, HttpRequest, OidcToken, Task};
 use google_cloudtasks2::{oauth2::authenticator::Authenticator, CloudTasks};
@@ -6,7 +7,6 @@ use hyper::{Body, Response};
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use std::collections::HashMap;
 use thiserror::Error;
-use crate::NimbusError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -18,6 +18,7 @@ pub enum Error {
 
 #[async_trait::async_trait]
 pub trait TaskHelper {
+    /// Create a new Task
     fn new_task(
         service: &str,
         method: &str,
@@ -45,10 +46,14 @@ pub trait TaskHelper {
     }
 }
 
+/// CloudTaskHelper trait
+/// implemented for CloudTasks<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
 pub trait CloudTaskHelper<S> {
+    /// Create a new CloudTasks with an Authenticator
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 
+    /// Push a task to a queue without creating a task first
     #[allow(clippy::too_many_arguments)]
     async fn push(
         &self,
@@ -74,6 +79,8 @@ pub trait CloudTaskHelper<S> {
 
         self.push_task(queue, task, res_view).await
     }
+
+    /// Push a task to a queue, takes a Task
     async fn push_task(
         &self,
         queue: &str,
@@ -117,9 +124,8 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
             .projects()
             .locations_queues_tasks_create(rq, queue)
             .doit()
-            .await.map_err(|e| {
-                Error::CloudTasks(e)
-            })?;
+            .await
+            .map_err(|e| Error::CloudTasks(e))?;
 
         Ok(a)
     }
@@ -182,7 +188,8 @@ mod tests {
         let time_now = Utc::now();
         let time_now_int = time_now.timestamp();
         // xor shift algo
-        let random_num = time_now_int ^ (time_now_int << 13) ^ (time_now_int >> 17) ^ (time_now_int << 5);
+        let random_num =
+            time_now_int ^ (time_now_int << 13) ^ (time_now_int >> 17) ^ (time_now_int << 5);
         let task_name = queue.clone() + "/tasks/test_task_" + &random_num.to_string();
 
         let task = Task::new_task(
@@ -194,7 +201,6 @@ mod tests {
             None,
             None,
         );
-
 
         let (res, _task) = client.push_task(&queue, task, None).await.unwrap();
 
