@@ -19,7 +19,7 @@ pub enum Error {
 /// SecretManagerHelper trait
 /// implemented for SecretManager<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
-pub trait SecretManagerHelper<S>: Sized {
+pub trait SecretManagerHelper<S> {
     /// Create a new SecretManager with an Authenticator
     /// Deals with boilerplate of creating a new SecretManager
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;

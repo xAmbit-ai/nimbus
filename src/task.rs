@@ -49,7 +49,7 @@ pub trait TaskHelper: Sized {
 /// CloudTaskHelper trait
 /// implemented for CloudTasks<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
-pub trait CloudTaskHelper<S>:Sized {
+pub trait CloudTaskHelper<S>{
     /// Create a new CloudTasks with an Authenticator
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 

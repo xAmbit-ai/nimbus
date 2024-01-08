@@ -24,7 +24,7 @@ pub enum Error {
 }
 
 #[async_trait::async_trait]
-pub trait StorageHelper: Sized {
+pub trait StorageHelper {
     /// upload from bytes to a bucket
     async fn upload_from_bytes(
         &self,
