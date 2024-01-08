@@ -1,9 +1,12 @@
-use crate::NimbusError;
-use google_secretmanager1::{oauth2::authenticator::Authenticator, SecretManager};
-use hyper::client::HttpConnector;
-use hyper::Client;
-use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
+use google_secretmanager1::{
+    hyper::{client::HttpConnector, Client},
+    hyper_rustls::{HttpsConnector, HttpsConnectorBuilder},
+    oauth2::authenticator::Authenticator,
+    SecretManager,
+};
 use thiserror::Error;
+
+use crate::NimbusError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -16,6 +19,7 @@ pub enum Error {
     #[error("SecretManager error: {0}")]
     SecretManager(#[from] google_secretmanager1::Error),
 }
+
 /// SecretManagerHelper trait
 /// implemented for SecretManager<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
@@ -111,8 +115,9 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use google_auth_helper::helper::AuthHelper;
+
+    use super::*;
 
     #[tokio::test]
     async fn get_secret_test() {

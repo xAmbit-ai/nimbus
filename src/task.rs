@@ -1,12 +1,14 @@
-use crate::NimbusError;
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use google_cloudtasks2::api::{CreateTaskRequest, HttpRequest, OidcToken, Task};
+use google_cloudtasks2::hyper::client::HttpConnector;
+use google_cloudtasks2::hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use google_cloudtasks2::{oauth2::authenticator::Authenticator, CloudTasks};
-use hyper::client::HttpConnector;
-use hyper::{Body, Response};
-use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
-use std::collections::HashMap;
+use google_cloudtasks2::hyper::{Body, Response, self};
 use thiserror::Error;
+
+use crate::NimbusError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -49,7 +51,7 @@ pub trait TaskHelper: Sized {
 /// CloudTaskHelper trait
 /// implemented for CloudTasks<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
-pub trait CloudTaskHelper<S>{
+pub trait CloudTaskHelper<S> {
     /// Create a new CloudTasks with an Authenticator
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 
@@ -133,8 +135,10 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
 
 #[cfg(test)]
 mod tests {
-    use super::{Authenticator, CloudTaskHelper, CloudTasks, HashMap, Task, Utc};
     use google_auth_helper::helper::AuthHelper;
+
+    use super::{Authenticator, CloudTaskHelper, CloudTasks, HashMap, Task, Utc};
+
     #[tokio::test]
     async fn test_new_http_task() {
         use super::TaskHelper;

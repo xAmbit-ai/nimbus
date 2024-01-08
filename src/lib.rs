@@ -81,12 +81,15 @@ pub use storage::StorageHelper;
 pub use task::{CloudTaskHelper, TaskHelper};
 
 // Re-Export crates
+pub use google_cloud_storage;
+pub use google_cloud_storage::client::{Client, ClientConfig};
 pub use google_cloudtasks2;
-pub use google_cloudtasks2::{CloudTasks, api::{Task, OidcToken}};
+pub use google_cloudtasks2::{
+    api::{OidcToken, Task},
+    CloudTasks,
+};
 pub use google_secretmanager1;
 pub use google_secretmanager1::SecretManager;
-pub use google_cloud_storage;
-pub use google_cloud_storage::client::{Client,ClientConfig};
 pub use yup_oauth2;
 pub use yup_oauth2::authenticator::Authenticator;
 pub use yup_oauth2::hyper::client::HttpConnector;
