@@ -92,6 +92,11 @@ pub use yup_oauth2::authenticator::Authenticator;
 pub use yup_oauth2::hyper::client::HttpConnector;
 pub use yup_oauth2::hyper_rustls::HttpsConnector;
 
+// custom types
+
+pub type CloudTaskClient = CloudTasks<HttpsConnector<HttpConnector>>;
+pub type SecretManagerClient = SecretManager<HttpsConnector<HttpConnector>>;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
