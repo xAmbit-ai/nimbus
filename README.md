@@ -1,6 +1,4 @@
-# nimbus
-
-## Nimbus
+# Nimbus
 Helper library for Cloud
 
 provides helper functions and re-exports for:
@@ -13,6 +11,21 @@ Traits:
 - `storage::StorageHelper` trait for `google_storage1::Storage`
 - `task::TaskHelper` trait for `google_cloudtasks2::api::Task`
 - `task::CloudTaskHelper` trait for `google_cloudtasks2::CloudTasks`
+
+## Re-Exports
+```rust
+pub use google_cloudtasks2;
+pub use google_cloudtasks2::{CloudTasks, api::Task};
+pub use google_secretmanager1;
+pub use google_secretmanager1::SecretManager;
+pub use google_cloud_storage;
+pub use google_cloud_storage::client::{Client,ClientConfig};
+pub use yup_oauth2;
+pub use yup_oauth2::authenticator::Authenticator;
+pub use yup_oauth2::hyper::client::HttpConnector;
+pub use yup_oauth2::hyper_rustls::HttpsConnector;
+```
+
 
 ## Examples
 
