@@ -17,7 +17,7 @@ pub enum Error {
 }
 
 #[async_trait::async_trait]
-pub trait TaskHelper {
+pub trait TaskHelper: Sized {
     /// Create a new Task
     fn new_task(
         service: &str,
@@ -49,7 +49,7 @@ pub trait TaskHelper {
 /// CloudTaskHelper trait
 /// implemented for CloudTasks<HttpsConnector<HttpConnector>>
 #[async_trait::async_trait]
-pub trait CloudTaskHelper<S> {
+pub trait CloudTaskHelper<S>:Sized {
     /// Create a new CloudTasks with an Authenticator
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 
