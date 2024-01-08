@@ -96,6 +96,7 @@ pub use yup_oauth2::hyper_rustls::HttpsConnector;
 
 pub type CloudTaskClient = CloudTasks<HttpsConnector<HttpConnector>>;
 pub type SecretManagerClient = SecretManager<HttpsConnector<HttpConnector>>;
+pub type DefaultConnector = HttpsConnector<HttpConnector>;
 
 use thiserror::Error;
 
