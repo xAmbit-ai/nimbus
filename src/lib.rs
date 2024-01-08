@@ -1,7 +1,7 @@
 //! # Nimbus
 //! Helper library for Cloud
 //!
-//! provides helper functions for:
+//! provides helper functions and re-exports for:
 //! - [google-cloudtask2](https://docs.rs/google-cloudtasks2)
 //! - [google-cloudsecretmanager1](https://docs.rs/google-cloudsecretmanager1)
 //! - [google-cloudstorage1](https://docs.rs/google-cloudstorage1)
@@ -18,9 +18,8 @@
 //!
 //! ```
 //! use nimbus::SecretManagerHelper;
+//! use nimbus::{ SecretManager, Authenticator };
 //! use google_auth_helper::helper::AuthHelper; // [`google_auth_helper`] crate is not re-exported
-//! use google_secretmanager1::SecretManager;
-//! use google_secretmanager1::oauth2::authenticator::Authenticator;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -37,8 +36,8 @@
 //!
 //! ```
 //! use nimbus::StorageHelper;
+//! use nimbus::{ ClientConfig, Client };
 //! use google_auth_helper::helper::AuthHelper; // [`google_auth_helper`] crate is not re-exported
-//! use google_cloud_storage::client::{Client, ClientConfig};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -56,9 +55,8 @@
 //!
 //! ```
 //! use nimbus::{CloudTaskHelper, TaskHelper};
+//! use nimbus::{ CloudTasks, Authenticator, Task };
 //! use google_auth_helper::helper::AuthHelper; // [`google_auth_helper`] crate is not re-exported
-//! use google_cloudtasks2::{CloudTasks, api::Task};
-//! use google_cloudtasks2::oauth2::authenticator::Authenticator;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -81,6 +79,16 @@ pub mod task;
 pub use secret::SecretManagerHelper;
 pub use storage::StorageHelper;
 pub use task::{CloudTaskHelper, TaskHelper};
+
+// Re-Export crates
+pub use google_cloudtasks2;
+pub use google_cloudtasks2::{CloudTasks, api::Task};
+pub use google_secretmanager1;
+pub use google_secretmanager1::SecretManager;
+pub use google_cloud_storage;
+pub use google_cloud_storage::client::{Client,ClientConfig};
+pub use yup_oauth2;
+pub use yup_oauth2::authenticator::Authenticator;
 
 use thiserror::Error;
 

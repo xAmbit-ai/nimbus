@@ -1,17 +1,18 @@
-# Nimbus
+# nimbus
 
-## Helper library for Cloud
+## Nimbus
+Helper library for Cloud
 
-provides helper functions for:
+provides helper functions and re-exports for:
 - [google-cloudtask2](https://docs.rs/google-cloudtasks2)
 - [google-cloudsecretmanager1](https://docs.rs/google-cloudsecretmanager1)
 - [google-cloudstorage1](https://docs.rs/google-cloudstorage1)
 
 Traits:
-- `SecretManagerHelper` trait for `google_secretmanager1::SecretManager`
-- `StorageHelper` trait for `google_storage1::Storage`
-- `TaskHelper` trait for `google_cloudtasks2::api::Task`
-- `CloudTaskHelper` trait for `google_cloudtasks2::CloudTasks`
+- `secret::SecretManagerHelper` trait for `google_secretmanager1::SecretManager`
+- `storage::StorageHelper` trait for `google_storage1::Storage`
+- `task::TaskHelper` trait for `google_cloudtasks2::api::Task`
+- `task::CloudTaskHelper` trait for `google_cloudtasks2::CloudTasks`
 
 ## Examples
 
@@ -19,9 +20,8 @@ Traits:
 
 ```rust
 use nimbus::SecretManagerHelper;
+use nimbus::{ SecretManager, Authenticator };
 use google_auth_helper::helper::AuthHelper; // [`google_auth_helper`] crate is not re-exported
-use google_secretmanager1::SecretManager;
-use google_secretmanager1::oauth2::authenticator::Authenticator;
 
 #[tokio::main]
 async fn main() {
@@ -38,8 +38,8 @@ async fn main() {
 
 ```rust
 use nimbus::StorageHelper;
+use nimbus::{ ClientConfig, Client };
 use google_auth_helper::helper::AuthHelper; // [`google_auth_helper`] crate is not re-exported
-use google_cloud_storage::client::{Client, ClientConfig};
 
 #[tokio::main]
 async fn main() {
@@ -57,9 +57,8 @@ async fn main() {
 
 ```rust
 use nimbus::{CloudTaskHelper, TaskHelper};
+use nimbus::{ CloudTasks, Authenticator, Task };
 use google_auth_helper::helper::AuthHelper; // [`google_auth_helper`] crate is not re-exported
-use google_cloudtasks2::{CloudTasks, api::Task};
-use google_cloudtasks2::oauth2::authenticator::Authenticator;
 
 #[tokio::main]
 async fn main() {
