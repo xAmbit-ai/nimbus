@@ -82,7 +82,7 @@ pub use task::{CloudTaskHelper, TaskHelper};
 
 // Re-Export crates
 pub use google_cloudtasks2;
-pub use google_cloudtasks2::{CloudTasks, api::Task};
+pub use google_cloudtasks2::{CloudTasks, api::{Task, OidcToken}};
 pub use google_secretmanager1;
 pub use google_secretmanager1::SecretManager;
 pub use google_cloud_storage;
