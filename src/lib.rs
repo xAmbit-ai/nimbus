@@ -89,6 +89,8 @@ pub use google_cloud_storage;
 pub use google_cloud_storage::client::{Client,ClientConfig};
 pub use yup_oauth2;
 pub use yup_oauth2::authenticator::Authenticator;
+pub use yup_oauth2::hyper::client::HttpConnector;
+pub use yup_oauth2::hyper_rustls::HttpsConnector;
 
 use thiserror::Error;
 
