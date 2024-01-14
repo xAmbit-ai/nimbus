@@ -1,5 +1,5 @@
 use crate::NimbusError;
-use google_cloud_storage::client::{Client, ClientConfig};
+use google_cloud_storage::client::Client;
 use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
 use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
@@ -44,7 +44,7 @@ pub trait StorageHelper {
     /// takes a PathBuf to file and key
     /// file name does not matter as key will be used to create the file in the bucket
     async fn upload_file(&self, bucket: &str, key: &str, path: PathBuf) -> Result<(), NimbusError> {
-        let data = tokio::fs::read(path).await.map_err(|e| Error::IO(e))?;
+        let data = tokio::fs::read(path).await.map_err(Error::IO)?;
         self.upload_from_bytes(bucket, key, None, data).await?;
         Ok(())
     }
@@ -59,7 +59,7 @@ pub trait StorageHelper {
         if !path_dir.exists() {
             tokio::fs::create_dir_all(path_dir.clone())
                 .await
-                .map_err(|e| Error::IO(e))?;
+                .map_err(Error::IO)?;
         }
 
         if !path_dir.is_dir() {
@@ -72,14 +72,12 @@ pub trait StorageHelper {
         let path = path_dir.join(key);
 
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| Error::IO(e))?;
+            tokio::fs::create_dir_all(parent).await.map_err(Error::IO)?;
         }
 
         tokio::fs::write(path.clone(), data)
             .await
-            .map_err(|e| Error::IO(e))?;
+            .map_err(Error::IO)?;
 
         Ok(path)
     }
@@ -127,7 +125,7 @@ impl StorageHelper for Client {
                 &up_type,
             )
             .await
-            .map_err(|e| Error::Storage(e))?;
+            .map_err(Error::Storage)?;
 
         Ok(())
     }
@@ -143,7 +141,7 @@ impl StorageHelper for Client {
                 &Range::default(),
             )
             .await
-            .map_err(|e| Error::Storage(e))?;
+            .map_err(Error::Storage)?;
 
         Ok(a)
     }
@@ -156,7 +154,7 @@ impl StorageHelper for Client {
                 ..Default::default()
             })
             .await
-            .map_err(|e| Error::Storage(e))?;
+            .map_err(Error::Storage)?;
 
         Ok(())
     }
@@ -166,6 +164,7 @@ impl StorageHelper for Client {
 mod tests {
     use super::*;
     use google_auth_helper::helper::AuthHelper;
+    use google_cloud_storage::client::ClientConfig;
 
     #[tokio::test]
     async fn upload_download_delete_test() {
