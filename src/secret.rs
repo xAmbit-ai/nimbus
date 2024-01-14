@@ -1,4 +1,5 @@
 use google_secretmanager1::{
+    api::{AddSecretVersionRequest, Automatic, Replication, Secret, SecretPayload},
     hyper::{client::HttpConnector, Client},
     hyper_rustls::{HttpsConnector, HttpsConnectorBuilder},
     oauth2::authenticator::Authenticator,
@@ -30,6 +31,14 @@ pub trait SecretManagerHelper<S> {
 
     /// Get the latest version of a secret
     async fn get_secret(&self, project: &str, secret: &str) -> Result<Vec<u8>, NimbusError>;
+
+    /// Creates a new secret
+    async fn create_secret(
+        &self,
+        project: &str,
+        secret_name: &str,
+        secret_val: &str,
+    ) -> Result<(), NimbusError>;
 
     /// Get a specific version of a secret
     async fn get_secret_version(
@@ -67,7 +76,7 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
             .secrets_versions_access(&secret_name)
             .doit()
             .await
-            .map_err(|e| Error::SecretManager(e))?;
+            .map_err(Error::SecretManager)?;
 
         let secret = if let Some(pl) = s.payload {
             if let Some(data) = pl.data {
@@ -80,6 +89,45 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
         };
 
         Ok(secret)
+    }
+
+    async fn create_secret(
+        &self,
+        project: &str,
+        secret_name: &str,
+        secret_val: &str,
+    ) -> Result<(), NimbusError> {
+        self.projects()
+            .secrets_create(
+                Secret {
+                    replication: Some(Replication {
+                        automatic: Some(Automatic::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                format!("projects/{project}").as_str(),
+            )
+            .secret_id(secret_name)
+            .doit()
+            .await
+            .map_err(Error::SecretManager)?;
+
+        let vrq = AddSecretVersionRequest {
+            payload: Some(SecretPayload {
+                data: Some(secret_val.as_bytes().to_vec()),
+                ..Default::default()
+            }),
+        };
+
+        let parent = format!("projects/{project}/secrets/{secret_name}");
+        self.projects()
+            .secrets_add_version(vrq, &parent)
+            .doit()
+            .await
+            .map_err(Error::SecretManager)?;
+
+        Ok(())
     }
 
     async fn get_secret_version(
@@ -97,7 +145,7 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
             .secrets_versions_access(&secret_name)
             .doit()
             .await
-            .map_err(|e| Error::SecretManager(e))?;
+            .map_err(Error::SecretManager)?;
 
         let secret = if let Some(pl) = s.payload {
             if let Some(data) = pl.data {

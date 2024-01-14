@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use google_cloudtasks2::api::{CreateTaskRequest, HttpRequest, OidcToken, Task};
 use google_cloudtasks2::hyper::client::HttpConnector;
+use google_cloudtasks2::hyper::{self, Body, Response};
 use google_cloudtasks2::hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use google_cloudtasks2::{oauth2::authenticator::Authenticator, CloudTasks};
-use google_cloudtasks2::hyper::{Body, Response, self};
 use thiserror::Error;
 
 use crate::NimbusError;
@@ -127,7 +127,7 @@ impl CloudTaskHelper<HttpsConnector<HttpConnector>> for CloudTasks<HttpsConnecto
             .locations_queues_tasks_create(rq, queue)
             .doit()
             .await
-            .map_err(|e| Error::CloudTasks(e))?;
+            .map_err(Error::CloudTasks)?;
 
         Ok(a)
     }
