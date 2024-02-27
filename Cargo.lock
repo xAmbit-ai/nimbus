@@ -1015,21 +1015,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "google-auth-helper"
-version = "0.1.1"
-source = "git+https://github.com/xAmbit-ai/google-auth-helper?branch=main#8e664088d4cd22ed04a20353ec75a012630e32db"
-dependencies = [
- "async-trait",
- "google-cloud-storage",
- "home",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "yup-oauth2",
-]
-
-[[package]]
 name = "google-cloud-auth"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1185,12 +1170,6 @@ name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
-
-[[package]]
-name = "hermit-abi"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "379dada1584ad501b383485dd706b8afb7a70fcbc7f4da7d780638a5a6124a60"
 
 [[package]]
 name = "hex"
@@ -1567,7 +1546,6 @@ dependencies = [
  "aws-sdk-s3",
  "aws-sdk-secretsmanager",
  "chrono",
- "google-auth-helper",
  "google-cloud-storage",
  "google-cloudtasks2",
  "google-secretmanager1",
@@ -1610,16 +1588,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da0df0e5185db44f69b44f26786fe401b6c293d1907744beaa7fa62b2e5a517a"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "num_cpus"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
-dependencies = [
- "hermit-abi",
- "libc",
 ]
 
 [[package]]
@@ -2466,7 +2434,6 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "num_cpus",
  "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
