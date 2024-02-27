@@ -41,9 +41,6 @@ pub trait SecretManagerHelper<S> {
     #[cfg(feature = "gcp")]
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
 
-    #[cfg(feature = "aws")]
-    async fn new_with_authenticator() -> Self;
-
     /// Get the latest version of a secret
     async fn get_secret(&self, project: &str, secret: &str) -> Result<Vec<u8>, NimbusError>;
 
@@ -65,22 +62,18 @@ pub trait SecretManagerHelper<S> {
 }
 
 #[cfg(feature = "aws")]
+pub async fn secret_manager_client() -> Client {
+    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
+    Client::new(&config)
+}
+
+#[cfg(feature = "aws")]
 #[async_trait::async_trait]
 impl SecretManagerHelper<()> for aws_sdk_secretsmanager::Client {
-    async fn new_with_authenticator() -> Self {
-        let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
-        Client::new(&config)
-    }
-
     async fn get_secret(&self, _: &str, secret: &str) -> Result<Vec<u8>, NimbusError> {
-        let res = match self
-            .get_secret_value()
-            .secret_id(secret.to_owned())
-            .send()
-            .await
-        {
+        let res = match self.get_secret_value().secret_id(secret).send().await {
             Ok(res) => {
-                if let Some(data) = res.secret_binary {
+                if let Some(data) = res.secret_string {
                     data
                 } else {
                     return Err(NimbusError::from(Error::SecretManager(
@@ -91,7 +84,7 @@ impl SecretManagerHelper<()> for aws_sdk_secretsmanager::Client {
             Err(e) => return Err(NimbusError::from(Error::SecretManager(e.to_string()))),
         };
 
-        Ok(res.into_inner())
+        Ok(res.as_bytes().to_vec())
     }
 
     /// Get a specific version of a secret
@@ -287,5 +280,22 @@ mod tests {
             .get_secret_version(&project, &secret, &version)
             .await
             .unwrap();
+    }
+}
+
+#[cfg(feature = "aws")]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn get_secret_test() {
+        let secret_manager = secret_manager_client().await;
+        let d = secret_manager
+            .get_secret("", "<some test data>")
+            .await
+            .expect("failed to get secret");
+
+        print!("{}", String::from_utf8(d).expect("secret to string failed"));
     }
 }

@@ -79,6 +79,10 @@ pub use secret::SecretManagerHelper;
 pub use storage::StorageHelper;
 
 #[cfg(feature = "aws")]
+pub use secret::secret_manager_client;
+
+// re-exports
+#[cfg(feature = "aws")]
 pub use aws_config;
 #[cfg(feature = "aws")]
 pub use aws_sdk_s3;
