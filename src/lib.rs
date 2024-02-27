@@ -74,31 +74,46 @@
 //! ```
 pub mod secret;
 pub mod storage;
+#[cfg(feature = "gcp")]
 pub mod task;
 
 pub use secret::SecretManagerHelper;
 pub use storage::StorageHelper;
+#[cfg(feature = "gcp")]
 pub use task::{CloudTaskHelper, TaskHelper};
 
 // Re-Export crates
+#[cfg(feature = "gcp")]
 pub use google_cloud_storage;
+#[cfg(feature = "gcp")]
 pub use google_cloud_storage::client::{Client, ClientConfig};
+#[cfg(feature = "gcp")]
 pub use google_cloudtasks2;
+#[cfg(feature = "gcp")]
 pub use google_cloudtasks2::{
     api::{OidcToken, Task},
     CloudTasks,
 };
+#[cfg(feature = "gcp")]
 pub use google_secretmanager1;
+#[cfg(feature = "gcp")]
 pub use google_secretmanager1::SecretManager;
+#[cfg(feature = "gcp")]
 pub use yup_oauth2;
+#[cfg(feature = "gcp")]
 pub use yup_oauth2::authenticator::Authenticator;
+#[cfg(feature = "gcp")]
 pub use yup_oauth2::hyper::client::HttpConnector;
+#[cfg(feature = "gcp")]
 pub use yup_oauth2::hyper_rustls::HttpsConnector;
 
 // custom types
 
+#[cfg(feature = "gcp")]
 pub type CloudTaskClient = CloudTasks<HttpsConnector<HttpConnector>>;
+#[cfg(feature = "gcp")]
 pub type SecretManagerClient = SecretManager<HttpsConnector<HttpConnector>>;
+#[cfg(feature = "gcp")]
 pub type DefaultConnector = HttpsConnector<HttpConnector>;
 
 use thiserror::Error;
@@ -109,6 +124,7 @@ pub enum NimbusError {
     SecretManager(#[from] secret::Error),
     #[error("Storage error: {0}")]
     StorageClient(#[from] storage::Error),
+    #[cfg(feature = "gcp")]
     #[error("CloudTasks error: {0}")]
     TasksClient(#[from] task::Error),
     #[error("Error: {0}")]

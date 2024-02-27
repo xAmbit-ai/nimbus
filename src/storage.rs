@@ -1,20 +1,38 @@
 use crate::NimbusError;
+
+use aws_sdk_s3::primitives::ByteStream;
+#[cfg(feature = "gcp")]
 use google_cloud_storage::client::Client;
+#[cfg(feature = "gcp")]
 use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
+#[cfg(feature = "gcp")]
 use google_cloud_storage::http::objects::download::Range;
+#[cfg(feature = "gcp")]
 use google_cloud_storage::http::objects::get::GetObjectRequest;
+#[cfg(feature = "gcp")]
 use google_cloud_storage::http::objects::upload::{UploadObjectRequest, UploadType};
+#[cfg(feature = "gcp")]
 use google_cloud_storage::http::objects::Object;
+
+#[cfg(feature = "aws")]
+use aws_sdk_s3::Client;
+
+use std::io::Write;
 use std::path::PathBuf;
 use thiserror::Error;
 use tokio;
 
 #[derive(Error, Debug)]
 pub enum Error {
+    #[cfg(feature = "gcp")]
     #[error("Storage auth error: {0}")]
     StorageAuth(#[from] google_cloud_storage::client::google_cloud_auth::error::Error),
+    #[cfg(feature = "gcp")]
     #[error("Storage error: {0}")]
     Storage(#[from] google_cloud_storage::http::Error),
+    #[cfg(feature = "aws")]
+    #[error("Storage error: {0}")]
+    Storage(String),
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
     #[error("File Type Validation Error: {0}")]
@@ -25,6 +43,10 @@ pub enum Error {
 
 #[async_trait::async_trait]
 pub trait StorageHelper {
+    #[cfg(feature = "aws")]
+    /// returns a new client for simplicity
+    async fn new_with_authenticator() -> Self;
+
     /// upload from bytes to a bucket
     async fn upload_from_bytes(
         &self,
@@ -100,6 +122,7 @@ pub trait StorageHelper {
     }
 }
 
+#[cfg(feature = "gcp")]
 #[async_trait::async_trait]
 impl StorageHelper for Client {
     async fn upload_from_bytes(
@@ -130,6 +153,7 @@ impl StorageHelper for Client {
         Ok(())
     }
 
+    #[cfg(feature = "gcp")]
     async fn download_to_bytes(&self, bucket: &str, key: &str) -> Result<Vec<u8>, NimbusError> {
         let a = self
             .download_object(
@@ -146,6 +170,7 @@ impl StorageHelper for Client {
         Ok(a)
     }
 
+    #[cfg(feature = "gcp")]
     async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), NimbusError> {
         let _ = self
             .delete_object(&DeleteObjectRequest {
@@ -160,6 +185,64 @@ impl StorageHelper for Client {
     }
 }
 
+#[cfg(feature = "aws")]
+#[async_trait::async_trait]
+impl StorageHelper for Client {
+    async fn new_with_authenticator() -> Self {
+        let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+        Client::new(&config)
+    }
+
+    async fn upload_from_bytes(
+        &self,
+        bucket: &str,
+        key: &str,
+        mime: Option<String>,
+        data: Vec<u8>,
+    ) -> Result<(), NimbusError> {
+        let builder = self
+            .put_object()
+            .bucket(bucket)
+            .key(key)
+            .body(ByteStream::from(data))
+            .set_content_type(mime);
+
+        if let Err(e) = builder.send().await {
+            return Err(NimbusError::from(Error::Storage(e.to_string())));
+        }
+
+        Ok(())
+    }
+
+    async fn download_to_bytes(&self, bucket: &str, key: &str) -> Result<Vec<u8>, NimbusError> {
+        let builder = self.get_object().bucket(bucket).key(key);
+
+        match builder.send().await {
+            Ok(mut d) => {
+                let mut res = vec![];
+                while let Ok(Some(bytes)) = d.body.try_next().await {
+                    if let Err(e) = res.write_all(&bytes) {
+                        return Err(NimbusError::from(Error::Storage(e.to_string())));
+                    }
+                }
+
+                Ok(res)
+            }
+            Err(e) => Err(NimbusError::from(Error::Storage(e.to_string()))),
+        }
+    }
+
+    async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), NimbusError> {
+        let r = self.delete_object().bucket(bucket).key(key).send().await;
+
+        match r {
+            Ok(_) => Ok(()),
+            Err(e) => Err(NimbusError::from(Error::Storage(e.to_string()))),
+        }
+    }
+}
+
+#[cfg(feature = "gcp")]
 #[cfg(test)]
 mod tests {
     use super::*;
