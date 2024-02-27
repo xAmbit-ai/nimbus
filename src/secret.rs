@@ -1,3 +1,6 @@
+use aws_config::BehaviorVersion;
+
+#[cfg(feature = "gcp")]
 use google_secretmanager1::{
     api::{AddSecretVersionRequest, Automatic, Replication, Secret, SecretPayload},
     hyper::{client::HttpConnector, Client},
@@ -5,6 +8,10 @@ use google_secretmanager1::{
     oauth2::authenticator::Authenticator,
     SecretManager,
 };
+
+#[cfg(feature = "aws")]
+use aws_sdk_secretsmanager::Client;
+
 use thiserror::Error;
 
 use crate::NimbusError;
@@ -17,8 +24,12 @@ pub enum Error {
     NoPayload,
     #[error("Error: {0}")]
     Other(String),
+    #[cfg(feature = "gcp")]
     #[error("SecretManager error: {0}")]
     SecretManager(#[from] google_secretmanager1::Error),
+    #[cfg(feature = "aws")]
+    #[error("SecretManager error: {0}")]
+    SecretManager(String),
 }
 
 /// SecretManagerHelper trait
@@ -27,7 +38,11 @@ pub enum Error {
 pub trait SecretManagerHelper<S> {
     /// Create a new SecretManager with an Authenticator
     /// Deals with boilerplate of creating a new SecretManager
+    #[cfg(feature = "gcp")]
     async fn new_with_authenticator(authenticator: Authenticator<S>) -> Self;
+
+    #[cfg(feature = "aws")]
+    async fn new_with_authenticator() -> Self;
 
     /// Get the latest version of a secret
     async fn get_secret(&self, project: &str, secret: &str) -> Result<Vec<u8>, NimbusError>;
@@ -49,6 +64,86 @@ pub trait SecretManagerHelper<S> {
     ) -> Result<Vec<u8>, NimbusError>;
 }
 
+#[cfg(feature = "aws")]
+#[async_trait::async_trait]
+impl SecretManagerHelper<()> for aws_sdk_secretsmanager::Client {
+    async fn new_with_authenticator() -> Self {
+        let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
+        Client::new(&config)
+    }
+
+    async fn get_secret(&self, _: &str, secret: &str) -> Result<Vec<u8>, NimbusError> {
+        let res = match self
+            .get_secret_value()
+            .secret_id(secret.to_owned())
+            .send()
+            .await
+        {
+            Ok(res) => {
+                if let Some(data) = res.secret_binary {
+                    data
+                } else {
+                    return Err(NimbusError::from(Error::SecretManager(
+                        "invalid secret".to_string(),
+                    )));
+                }
+            }
+            Err(e) => return Err(NimbusError::from(Error::SecretManager(e.to_string()))),
+        };
+
+        Ok(res.into_inner())
+    }
+
+    /// Get a specific version of a secret
+    async fn get_secret_version(
+        &self,
+        _: &str,
+        secret: &str,
+        version: &str,
+    ) -> Result<Vec<u8>, NimbusError> {
+        let res = match self
+            .get_secret_value()
+            .secret_id(secret)
+            .version_stage(version)
+            .send()
+            .await
+        {
+            Ok(res) => {
+                if let Some(data) = res.secret_binary {
+                    data
+                } else {
+                    return Err(NimbusError::from(Error::SecretManager(
+                        "invalid secret".to_string(),
+                    )));
+                }
+            }
+            Err(e) => return Err(NimbusError::from(Error::SecretManager(e.to_string()))),
+        };
+
+        Ok(res.into_inner())
+    }
+
+    async fn create_secret(
+        &self,
+        _: &str,
+        secret_name: &str,
+        secret_val: &str,
+    ) -> Result<(), NimbusError> {
+        if let Err(e) = self
+            .create_secret()
+            .secret_string(secret_val)
+            .name(secret_name)
+            .send()
+            .await
+        {
+            return Err(NimbusError::from(Error::SecretManager(e.to_string())));
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "gcp")]
 #[async_trait::async_trait]
 impl SecretManagerHelper<HttpsConnector<HttpConnector>>
     for SecretManager<HttpsConnector<HttpConnector>>
@@ -161,6 +256,7 @@ impl SecretManagerHelper<HttpsConnector<HttpConnector>>
     }
 }
 
+#[cfg(feature = "gcp")]
 #[cfg(test)]
 mod tests {
     use google_auth_helper::helper::AuthHelper;

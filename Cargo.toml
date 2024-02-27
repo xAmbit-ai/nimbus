@@ -1,21 +1,28 @@
 [package]
 name = "nimbus"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-google-cloud-storage = "0"
-google-secretmanager1 = "5"
-google-cloudtasks2 = "5"
-yup-oauth2 = "8"
+aws-config = { version = "1", optional = true }
+aws-sdk-secretsmanager = { version = "1", optional = true }
+aws-sdk-s3 = { version = "1", optional = true }
+google-cloud-storage = { version = "0", optional = true }
+google-secretmanager1 = { version = "5", optional = true }
+google-cloudtasks2 = { version = "5", optional = true }
+yup-oauth2 = { version = "8", optional = true }
 async-trait = "0"
 chrono = "0"
 tokio = "1"
 infer = "0"
 thiserror = "1"
 
-[dev-dependencies]
-google-auth-helper = { git = "https://github.com/xAmbit-ai/google-auth-helper" , branch = "main" }
+# [dev-dependencies]
+# google-auth-helper = { git = "https://github.com/xAmbit-ai/google-auth-helper", branch = "main", optional = true }
 
+[features]
+default = ["aws"]
+gcp = ["dep:google-secretmanager1", "dep:google-cloud-storage", "dep:google-cloudtasks2"]
+aws = ["dep:aws-config", "dep:aws-sdk-secretsmanager", "dep:aws-sdk-s3"]
