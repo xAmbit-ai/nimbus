@@ -74,11 +74,19 @@
 //! ```
 pub mod secret;
 pub mod storage;
-#[cfg(feature = "gcp")]
-pub mod task;
 
 pub use secret::SecretManagerHelper;
 pub use storage::StorageHelper;
+
+#[cfg(feature = "aws")]
+pub use aws_config;
+#[cfg(feature = "aws")]
+pub use aws_sdk_s3;
+#[cfg(feature = "aws")]
+pub use aws_sdk_secretsmanager;
+
+#[cfg(feature = "gcp")]
+pub mod task;
 #[cfg(feature = "gcp")]
 pub use task::{CloudTaskHelper, TaskHelper};
 
@@ -108,7 +116,6 @@ pub use yup_oauth2::hyper::client::HttpConnector;
 pub use yup_oauth2::hyper_rustls::HttpsConnector;
 
 // custom types
-
 #[cfg(feature = "gcp")]
 pub type CloudTaskClient = CloudTasks<HttpsConnector<HttpConnector>>;
 #[cfg(feature = "gcp")]
